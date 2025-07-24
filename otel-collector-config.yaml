@@ -1,0 +1,66 @@
+# otel-collector-config.yaml
+receivers:
+  otlp/ingest:         # 4319 : Exporter ▶ Collector
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4319
+
+  otlp/postrouter:     # 4317 : Router ▶ Collector
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4320
+
+processors:
+  transform/to_sigma:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # - 'set(attributes["Image"], attributes["proc.name"])'
+          # - 'set(attributes["TargetFilename"], attributes["fd.name"]) where attributes["fd.name"] != nil'
+          # - 'set(attributes["TargetFilename"], attributes["evt.arg.filename"]) where attributes["evt.arg.filename"] != nil'
+          # - 'set(attributes["proc.name"], "wget") where attributes["proc.name"] == nil and IsMatch(attributes["proc.cmdline"], "^wget\\s")'
+          - 'set(attributes["Image"], attributes["Image"])'
+          - 'set(attributes["Image"], attributes["OriginalFileName"]) where attributes["Image"] == nil and attributes["OriginalFileName"] != nil'
+          - 'set(attributes["TargetFilename"], attributes["TargetFilename"]) where attributes["TargetFilename"] != nil'
+          - 'set(attributes["TargetFilename"], attributes["FileName"]) where attributes["TargetFilename"] == nil and attributes["FileName"] != nil'
+          - 'set(attributes["TargetFilename"], attributes["FilePath"]) where attributes["TargetFilename"] == nil and attributes["FilePath"] != nil'
+          - 'set(attributes["parentSpanID"], span.parent_span_id) where IsRootSpan() == false'
+
+  batch:
+    timeout: 200ms
+
+exporters:
+  otlp/sigma:
+    endpoint: "localhost:55680"
+    tls:
+      insecure: true
+    compression: none
+
+  otlphttp/jaeger:
+    endpoint: "http://localhost:4318"
+    tls:
+      insecure: true
+
+  file/all_events:
+    path: ./event/events.jsonl
+    format: json
+
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces/ingest:          # 1st 파이프라인
+      receivers:  [otlp/ingest]
+      processors: [transform/to_sigma, batch]
+      exporters:  [otlp/sigma]
+
+    traces/final:           # 2nd 파이프라인
+      receivers:  [otlp/postrouter]
+      processors: [batch]
+      exporters:  [otlphttp/jaeger, file/all_events, debug]
+
+  telemetry:
+    logs:
+      level: debug
