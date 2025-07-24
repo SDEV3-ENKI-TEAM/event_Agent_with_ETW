@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SysmonETWexporter")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+46ceff99c7910f103257b5471b1239fc07fdf81a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+932194827deae95bf2a5d942d379bcda6081f08b")]
 [assembly: System.Reflection.AssemblyProductAttribute("SysmonETWexporter")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SysmonETWexporter")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
