@@ -46,3 +46,4 @@ D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\SysmonETWexporter.pdb
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\SysmonETWexporter.genruntimeconfig.cache
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\ref\SysmonETWexporter.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\SysmonETWexporter.sourcelink.json
