@@ -6,7 +6,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.22" />
+		<PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="2.0.93" />
 		<PackageReference Include="OpenTelemetry" Version="1.12.0" />
 		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
 		<PackageReference Include="System.Diagnostics.EventLog" Version="9.0.7" />

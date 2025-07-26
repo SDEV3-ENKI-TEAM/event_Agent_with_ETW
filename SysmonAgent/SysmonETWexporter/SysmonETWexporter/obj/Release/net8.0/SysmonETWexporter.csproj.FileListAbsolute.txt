@@ -17,7 +17,6 @@ D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\SysmonETWexporter.runtimeconfig.json
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\SysmonETWexporter.dll
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\SysmonETWexporter.pdb
-D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\Microsoft.Diagnostics.NETCore.Client.dll
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\Microsoft.Diagnostics.FastSerialization.dll
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\Microsoft.Diagnostics.Tracing.TraceEvent.dll
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\Microsoft.Extensions.Configuration.dll
@@ -47,3 +46,12 @@ D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\SysmonETWexporter.genruntimeconfig.cache
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\ref\SysmonETWexporter.dll
 D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\obj\Release\net8.0\SysmonETWexporter.sourcelink.json
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\OSExtensions.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\x86\msvcp140.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\x86\vcruntime140.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\amd64\msvcp140.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\amd64\vcruntime140.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\amd64\vcruntime140_1.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\arm64\msvcp140.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\arm64\vcruntime140.dll
+D:\completed_trace\EventAgent_V3\SysmonAgent\SysmonETWexporter\SysmonETWexporter\bin\Release\net8.0\arm64\vcruntime140_1.dll

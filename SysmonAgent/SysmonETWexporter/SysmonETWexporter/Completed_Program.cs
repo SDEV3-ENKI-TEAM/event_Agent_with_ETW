@@ -1,55 +1,57 @@
 ﻿#pragma warning disable CA1416
 using Microsoft.Diagnostics.Tracing;
 using Microsoft.Diagnostics.Tracing.Session;
+using Microsoft.Diagnostics.Tracing.Parsers;
+using Microsoft.Diagnostics.Tracing.Parsers.Kernel;   // ★ Kernel ETW
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
-using System.Reflection;
-using System.Xml;
 
-namespace EventAgentBMode // Sysmon=ETW, Security=EventLogWatcher
+/* ─────  Namespace  ───── */
+namespace EventAgentUnified
 {
     internal class Program
     {
-        /* ───── Sysmon (ETW) 설정 ───── */
+        /* ───── Sysmon Provider ───── */
         private const string SysmonProvider = "Microsoft-Windows-Sysmon";
         private const ulong   SysmonKeywords = ulong.MaxValue;
         private const TraceEventLevel SysmonLevel = TraceEventLevel.Informational;
+
+        /* ───── ETW 세션 이름 ───── */
         private const string EtwSessionName = "EventAgent_ETW";
 
-        /* ───── Security(EventLog) 설정 ───── */
-        private static readonly HashSet<int> SecurityIds = new()
-        {
-            4624, 4625, 4648, 4672, 4663, 4698, 4699
-        };
+        /* ───── Security(EventLog) 필터 ───── */
+        private static readonly int[] SecurityIds = { 4688, 4689, 4624, 4625 };
 
         /* ───── OpenTelemetry ───── */
         private static readonly ActivitySource Src = new("event.agent");
         private static readonly TracerProvider Otel =
             Sdk.CreateTracerProviderBuilder()
                .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                   .AddService("eventlog-agent"))
+                   .AddService("event-agent"))
                .AddSource("event.agent")
                .AddOtlpExporter(o =>
                {
-                   o.Endpoint = new("http://localhost:4319"); // Collector 주소
+                   o.Endpoint = new("http://localhost:4319");
                    o.Protocol = OtlpExportProtocol.Grpc;
                })
                .Build();
 
-        /* PID → 루트 Activity 매핑 */
-        private static readonly ConcurrentDictionary<int, Activity> Roots = new();
-        private static Activity? LastRoot; // PID를 못 찾았을 때 fallback
+        /* ───── Root Span 관리 ───── */
+        private record RootInfo(Activity Act, DateTime Ts);
+        private static readonly ConcurrentDictionary<int, RootInfo> Roots = new();
+        private static readonly TimeSpan ROOT_TIMEOUT = TimeSpan.FromSeconds(60);
 
+        /* ───────────────────────── Main ───────────────────────── */
         private static void Main()
         {
             if (!(TraceEventSession.IsElevated() ?? false))
@@ -57,21 +59,32 @@ namespace EventAgentBMode // Sysmon=ETW, Security=EventLogWatcher
                 Console.WriteLine("[!] 관리자 권한으로 실행하세요.");
                 return;
             }
-
             Console.OutputEncoding = Encoding.UTF8;
-            Console.WriteLine("[Agent] Sysmon(ETW) + Security(EventLog) 수집 시작  —  <Enter> 로 종료\n");
+            Console.WriteLine("[Agent] Sysmon + Kernel-Process + Security 수집 시작 — <Enter> 로 종료\n");
 
-            /* ── 1. Sysmon ETW 세션 ── */
+            /* ── 1. ETW 세션 ── */
             using var sess = new TraceEventSession(EtwSessionName) { StopOnDispose = true };
-            sess.EnableProvider(SysmonProvider, SysmonLevel, SysmonKeywords);
-            sess.Source.AllEvents   += HandleSysmon;
-            sess.Source.Dynamic.All += HandleSysmon;
-            var etwThread = new Thread(() => sess.Source.Process()) { IsBackground = true };
-            etwThread.Start();
-            Console.WriteLine("[+] Sysmon ETW 세션 시작");
 
-            /* ── 2. Security EventLogWatcher ── */
+            /* Kernel-Process (프로세스 시작/종료) */
+            sess.EnableKernelProvider(KernelTraceEventParser.Keywords.Process);
+            /* Sysmon */
+            sess.EnableProvider(SysmonProvider, SysmonLevel, SysmonKeywords);
+            
+
+            /* 이벤트 핸들러 등록 */
+            sess.Source.AllEvents       += HandleEtwEvent;     // Sysmon 고정
+            sess.Source.Dynamic.All     += HandleEtwEvent;     // Sysmon 동적
+            sess.Source.Kernel.ProcessStart += HandleKStart;
+            sess.Source.Kernel.ProcessStop  += HandleKStop;
+
+            var etwTh = new Thread(() => sess.Source.Process()) { IsBackground = true };
+            etwTh.Start();
+
+            /* ── 2. Security EventLog ── */
             using var secWatcher = StartSecurityWatcher();
+
+            /* ── 3. Root Span 타임아웃 sweeper ── */
+            using var timer = new Timer(_ => SweepRoots(), null, ROOT_TIMEOUT, ROOT_TIMEOUT);
 
             Console.ReadLine();
 
@@ -79,152 +92,154 @@ namespace EventAgentBMode // Sysmon=ETW, Security=EventLogWatcher
             sess.Dispose();
             secWatcher.Enabled = false;
             Otel.Dispose();
-            etwThread.Join();
+            etwTh.Join();
         }
 
-        /* ─────────────────────────────────────────── Sysmon ─ */
-        private static void HandleSysmon(TraceEvent ev)
+        /* ─────────────── Kernel-Process Start/Stop ─────────────── */
+        private static void HandleKStart(ProcessTraceData e)
         {
-            int pid = TryGetPayloadInt(ev, "ProcessId") ?? ev.ProcessID;
-            int parentPid = TryGetPayloadInt(ev, "ParentProcessId") ?? 0;
-            
-            if (pid == 0) return; // Sysmon 이벤트는 PID 0 불가
+            /* 중복 Root 방지 */
+            if (Roots.ContainsKey(e.ProcessID)) return;
 
-            // // 루트 확보
-            // var root = Roots.GetOrAdd(pid, _ => Src.StartActivity($"process:{pid}", ActivityKind.Internal)!);
-            // LastRoot = root;
-
-            // using var span = Src.StartActivity($"sysmon:{(int)ev.ID}", ActivityKind.Internal, parentContext: root.Context);
-            // if (span == null) return;
-
-            // Tag(span, "Channel", "Sysmon");
-            // Tag(span, "EventId", (int)ev.ID);
-            // Tag(span, "ProcessId", pid);
-            if (!Roots.TryGetValue(pid, out var root))
-            {
-                root = Src.StartActivity($"process:{pid}", ActivityKind.Internal);
-                if (root != null) Roots[pid] = root;
-            }
+            var root = Src.StartActivity($"process:{e.ProcessID}", ActivityKind.Internal);
             if (root == null) return;
 
-            /* ③ 이벤트 단위 자식 Activity 생성 */
-            using var child = Src.StartActivity($"evt:{(int)ev.ID}", ActivityKind.Internal,
-                                                parentContext: root.Context);
-            if (child == null) return;
+            root.SetTag("provider", "Kernel-Process");
+            root.SetTag("event.id", 1);
+            root.SetTag("pid", e.ProcessID);
+            root.SetTag("ppid", e.ParentID);
+            root.SetTag("Image", e.ProcessName);
+            root.SetTag("CommandLine", e.CommandLine);
 
-            AddTags(child, ev, pid, parentPid);
+            Roots[e.ProcessID] = new(root, DateTime.UtcNow);
 
-
-            // Payload 태그 기록
-            // if (ev.PayloadNames is { Length: > 0 })
-            // {
-            //     foreach (var n in ev.PayloadNames)
-            //         Tag(span, n, ev.PayloadByName(n));
-            // }
-
-            Console.WriteLine($"[Sysmon] event {(int)ev.ID} : {pid}, {parentPid}");
+            Console.WriteLine($"[Kernel] Start PID {e.ProcessID} PPID {e.ParentID}");
         }
 
-        /* ─────────────────────────────────────────── Security ─ */
-        private static EventLogWatcher StartSecurityWatcher()
-        {
-            var query = new EventLogQuery("Security", PathType.LogName) { TolerateQueryErrors = true };
-            var w = new EventLogWatcher(query, null, false);
+        private static void HandleKStop(ProcessTraceData e) => CloseRoot(e.ProcessID, provider:"Kernel-Process", eid:2);
 
-            w.EventRecordWritten += (_, e) =>
+        /* ─────────────── Sysmon ETW(고정+동적) ─────────────── */
+        private static void HandleEtwEvent(TraceEvent ev)
+        {
+            if (ev.ProviderName != SysmonProvider) return;           // Sysmon 전용
+
+            int pid  = TryGetPayloadInt(ev, "ProcessId") ?? ev.ProcessID;
+            int ppid = TryGetPayloadInt(ev, "ParentProcessId") ?? 0;
+            if (pid == 0) return;
+
+            /* ① Root 확보 (없으면 이미 Kernel Start가 만들었을 것) */
+            var root = Roots.GetOrAdd(pid, _ =>
             {
-                if (e.EventRecord is null) return;
-                if (!SecurityIds.Contains(e.EventRecord.Id)) { e.EventRecord.Dispose(); return; }
-                HandleSecurity(e.EventRecord);
-            };
-            w.Enabled = true;
-            Console.WriteLine("[+] Security EventLogWatcher 활성화");
-            return w;
+                var r = Src.StartActivity($"process:{pid}", ActivityKind.Internal);
+                if (r != null)
+                {
+                    r.SetTag("provider", "Sysmon");
+                    r.SetTag("event.id", 1);
+                    r.SetTag("pid",  pid);
+                    r.SetTag("ppid", ppid);
+                }
+                return new RootInfo(r!, DateTime.UtcNow);
+            }).Act;
+
+            if (root == null) return;   // 생성 실패 시
+
+            /* ② Child Span */
+            using var span = Src.StartActivity($"evt:{ev.ID}", ActivityKind.Internal,
+                                    parentContext: root.Context);
+            if (span == null) return;
+
+            span.SetTag("provider", "Sysmon");
+            span.SetTag("event.id", (int)ev.ID);
+            AddTags(span, ev, pid, ppid);
+
+            /* ③ 종료 이벤트면 Root 닫기 */
+            if ((int)ev.ID == 5) CloseRoot(pid, "Sysmon", 5);
         }
 
-        private static void HandleSecurity(EventRecord rec)
+        /* ─────────────── Security EventLog ─────────────── */
+private static EventLogWatcher StartSecurityWatcher()
+{
+    var q = new EventLogQuery("Security", PathType.LogName) { TolerateQueryErrors = true };
+    var w = new EventLogWatcher(q, null, false);
+    w.EventRecordWritten += (_, e) =>
+    {
+        using var rec = e.EventRecord;
+        if (rec == null || !SecurityIds.Contains(rec.Id)) return;
+
+        int pid = rec.ProcessId ?? 0;
+
+        /* 부모 Root Span 찾기 (있을 수도, 없을 수도) */
+        RootInfo? parentInfo = null;
+        if (pid != 0) Roots.TryGetValue(pid, out parentInfo);
+
+        using var span = Src.StartActivity(
+            $"sec:{rec.Id}",
+            ActivityKind.Internal,
+            parentContext: parentInfo?.Act?.Context ?? default);
+
+        if (span == null) return;
+
+        span.SetTag("provider", "Security");
+        span.SetTag("event.id", rec.Id);
+        span.SetTag("pid", pid);
+        span.SetTag("TimeCreated", rec.TimeCreated);
+
+        Console.WriteLine($"[Security] {rec.Id} PID {pid}");
+    };
+    w.Enabled = true;
+    Console.WriteLine("[+] Security EventLogWatcher ON");
+    return w;
+}
+
+
+        /* ─────────────── Root 종료 & 타임아웃 ─────────────── */
+        private static void CloseRoot(int pid, string provider, int eid)
         {
-            using (rec)
+            if (Roots.TryRemove(pid, out var info))
             {
-                int pid = rec.ProcessId ?? 0;
-
-                // 부모 루트 찾기: 동일 PID 있으면, 없으면 최근 Sysmon Root fallback
-                Roots.TryGetValue(pid, out var parent);
-                parent ??= LastRoot;
-
-                using var span = Src.StartActivity($"security:{rec.Id}", ActivityKind.Internal,
-                    parentContext: parent?.Context ?? default);
-                if (span == null) return;
-
-                if (parent is null && pid != 0) Roots[pid] = span; // 첫 Security가 루트가 될 때
-
-                Tag(span, "Channel", "Security");
-                Tag(span, "EventId", rec.Id);
-                Tag(span, "RecordId", rec.RecordId);
-                Tag(span, "ProcessId", pid);
-                Tag(span, "TimeCreated", rec.TimeCreated);
-
-                for (int i = 0; i < rec.Properties.Count; i++)
-                    Tag(span, $"Data{i}", rec.Properties[i].Value);
-
-                Console.WriteLine($"[Security] event {rec.Id} : {pid}");
+                info.Act.SetTag("provider.close", provider);
+                info.Act.SetTag("event.id",        eid);
+                info.Act.Dispose();
+                Console.WriteLine($"[RootClose] {provider} EID {eid} PID {pid}");
             }
         }
 
-        /* ─────────────────────────────────────────── Helpers ─ */
-        private static void Tag(Activity span, string k, object? v)
+        private static void SweepRoots()
         {
-            if (v is null) return;
-            span.SetTag(k, v);
+            var now = DateTime.UtcNow;
+            foreach (var (pid, ri) in Roots.ToArray())
+                if (now - ri.Ts > ROOT_TIMEOUT)
+                    CloseRoot(pid, "Timeout", 0);
         }
-        
+
+        /* ─────────────── Helper  ─────────────── */
         private static void AddTags(Activity act, TraceEvent ev, int pid, int ppid)
         {
             void T(string k, object? v) { if (v != null) act.SetTag(k, v); }
 
-            /* 기본 태그 */
-            T("sysmon.pid", pid);
-            if (ppid != 0) T("sysmon.ppid", ppid);
-            T("sysmon.event_id", (int)ev.ID);
-            T("sysmon.task", ev.Task);
-            T("sysmon.opcode", ev.Opcode);
-            T("provider_guid", ev.ProviderGuid);
+            T("pid", pid);
+            if (ppid != 0) T("ppid", ppid);
 
-            /* TraceEvent의 public 속성 전체 태그화 */
-            foreach (var p in ev.GetType()
-                                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                .Where(p => p.GetIndexParameters().Length == 0))
+            foreach (var n in ev.PayloadNames ?? Array.Empty<string>())
             {
-                try { T(p.Name, p.GetValue(ev)); } catch { }
-            }
-
-            /* Payload 필드 태그화 */
-            if (ev.PayloadNames is { Length: > 0 })
-            {
-                foreach (var n in ev.PayloadNames)
-                {
-                    try { T(n, ev.PayloadByName(n)); } catch { }
-                }
+                try { T(n, ev.PayloadByName(n)); } catch { }
             }
         }
+
         private static int? TryGetPayloadInt(TraceEvent ev, string field)
         {
-            if (ev.PayloadNames?.Contains(field) == true)
+            if (ev.PayloadNames?.Contains(field) != true) return null;
+            try
             {
-                try
+                return ev.PayloadByName(field) switch
                 {
-                    object? val = ev.PayloadByName(field);
-                    return val switch
-                    {
-                        int i => i,
-                        long l => (int)l,
-                        string s when int.TryParse(s, out int parsed) => parsed,
-                        _ => null
-                    };
-                }
-                catch { /* ignore */ }
+                    int i   => i,
+                    long l  => (int)l,
+                    string s when int.TryParse(s, out int v) => v,
+                    _ => null
+                };
             }
-            return null;
+            catch { return null; }
         }
     }
 }

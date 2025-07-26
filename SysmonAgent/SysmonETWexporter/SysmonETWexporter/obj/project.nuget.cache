@@ -1,11 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "UNnZ1n5pkhI=",
+  "dgSpecHash": "dJxp0MJ6Co8=",
   "success": true,
   "projectFilePath": "D:\\completed_trace\\EventAgent_V3\\SysmonAgent\\SysmonETWexporter\\SysmonETWexporter\\SysmonETWexporter.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.diagnostics.netcore.client\\0.2.510501\\microsoft.diagnostics.netcore.client.0.2.510501.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.diagnostics.tracing.traceevent\\3.1.22\\microsoft.diagnostics.tracing.traceevent.3.1.22.nupkg.sha512",
+    "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.diagnostics.tracing.traceevent\\3.0.0\\microsoft.diagnostics.tracing.traceevent.3.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.extensions.configuration\\9.0.0\\microsoft.extensions.configuration.9.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\9.0.0\\microsoft.extensions.configuration.abstractions.9.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.extensions.configuration.binder\\9.0.0\\microsoft.extensions.configuration.binder.9.0.0.nupkg.sha512",
@@ -18,21 +17,27 @@
     "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.extensions.options\\9.0.0\\microsoft.extensions.options.9.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\9.0.0\\microsoft.extensions.options.configurationextensions.9.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.extensions.primitives\\9.0.0\\microsoft.extensions.primitives.9.0.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.netcore.platforms\\5.0.0\\microsoft.netcore.platforms.5.0.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\microsoft.win32.registry\\5.0.0\\microsoft.win32.registry.5.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\opentelemetry\\1.12.0\\opentelemetry.1.12.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\opentelemetry.api\\1.12.0\\opentelemetry.api.1.12.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\opentelemetry.api.providerbuilderextensions\\1.12.0\\opentelemetry.api.providerbuilderextensions.1.12.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\opentelemetry.exporter.opentelemetryprotocol\\1.12.0\\opentelemetry.exporter.opentelemetryprotocol.1.12.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\system.collections.immutable\\8.0.0\\system.collections.immutable.8.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\system.diagnostics.diagnosticsource\\9.0.0\\system.diagnostics.diagnosticsource.9.0.0.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\system.diagnostics.eventlog\\9.0.7\\system.diagnostics.eventlog.9.0.7.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\system.reflection.metadata\\8.0.0\\system.reflection.metadata.8.0.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\system.reflection.typeextensions\\4.7.0\\system.reflection.typeextensions.4.7.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\system.security.accesscontrol\\5.0.0\\system.security.accesscontrol.5.0.0.nupkg.sha512",
-    "C:\\Users\\KISIA\\.nuget\\packages\\system.security.principal.windows\\5.0.0\\system.security.principal.windows.5.0.0.nupkg.sha512",
+    "C:\\Users\\KISIA\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.5.2\\system.runtime.compilerservices.unsafe.4.5.2.nupkg.sha512",
     "C:\\Users\\KISIA\\.nuget\\packages\\system.text.json\\8.0.5\\system.text.json.8.0.5.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "SysmonETWexporter은(는) Microsoft.Diagnostics.Tracing.TraceEvent (>= 2.0.93)에 종속되지만 Microsoft.Diagnostics.Tracing.TraceEvent 2.0.93을(를) 찾을 수 없습니다. 대신 Microsoft.Diagnostics.Tracing.TraceEvent 3.0.0이(가) 확인되었습니다.",
+      "projectPath": "D:\\completed_trace\\EventAgent_V3\\SysmonAgent\\SysmonETWexporter\\SysmonETWexporter\\SysmonETWexporter.csproj",
+      "warningLevel": 1,
+      "filePath": "D:\\completed_trace\\EventAgent_V3\\SysmonAgent\\SysmonETWexporter\\SysmonETWexporter\\SysmonETWexporter.csproj",
+      "libraryId": "Microsoft.Diagnostics.Tracing.TraceEvent",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
 }

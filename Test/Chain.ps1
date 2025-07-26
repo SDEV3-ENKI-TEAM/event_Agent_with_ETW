@@ -1,31 +1,32 @@
-<#
-Chain.ps1
-cmd → powershell → cmd → SYSTEM 권한으로 notepad.exe, calc.exe 실행
-모든 창은 사용자 확인을 위해 Visible (숨기지 않음)
-관리자 PowerShell에서 실행할 것
-#>
+Write-Host "[*] EventLogWatcher 테스트용 스크립트 시작"
 
-param(
-    [string]$TaskName = "TempElevTask_$([guid]::NewGuid().ToString('N').Substring(0,8))"
-)
+# 1. 로그온 실패 유도 (4625)
+Start-Process "runas.exe" -ArgumentList "/user:FakeUser cmd.exe"
 
-# 최종 cmd에서 실행할 SYSTEM 예약 작업 명령어
-$finalCmd = @(
-    "schtasks /Create /TN $TaskName /TR \"powershell.exe -Command \\\"Start-Process notepad.exe; Start-Process calc.exe\\\"\" /SC ONCE /ST 00:00 /RL HIGHEST /RU SYSTEM /F",
-    "schtasks /Run /TN $TaskName",
-    "timeout /t 5 > nul",
-    "schtasks /Delete /TN $TaskName /F"
-) -join " & "
+# 2. 자격 증명 사용 로그온 시도 (4648)
+try {
+    runas /user:Administrator powershell
+} catch {
+    Write-Host "[!] runas 실패 (4648 예상)"
+}
 
-# 중간 PowerShell이 실행할 cmd 명령
-$psCmd = "Start-Process cmd.exe -ArgumentList '/k $finalCmd' -WindowStyle Normal"
+# 3. 특권 로그온 유도 (4672)
+try {
+    Start-Process powershell -Verb RunAs -ArgumentList "-Command `"whoami`""
+} catch {
+    Write-Host "[!] 권한 상승 시도 실패 (권한 상승 실패는 무시됨)"
+}
 
-# 첫 번째 cmd가 실행할 PowerShell 명령
-$cmdCmd = "powershell.exe -NoExit -Command \"$psCmd\""
+# 4. 파일 시스템 접근 감사 유도 (4663) – 감사 정책이 설정된 경우에만 감지됨
+$path = "$env:TEMP\etw_test_file.txt"
+Set-Content $path "ETW test"
+Get-Content $path | Out-Null
+Remove-Item $path
 
-# 최상위: PowerShell → cmd (창 표시)
-Start-Process cmd.exe -ArgumentList "/k $cmdCmd" -WindowStyle Normal
+# 5. 예약 작업 생성 및 삭제 (4698, 4699)
+$taskName = "TestEventLogTask_$([guid]::NewGuid().ToString().Substring(0, 6))"
+schtasks /Create /TN $taskName /TR "notepad.exe" /SC ONCE /ST 23:59 /RL HIGHEST /F | Out-Null
+schtasks /Delete /TN $taskName /F | Out-Null
 
-Write-Host "`n[+] cmd → powershell → cmd → SYSTEM 예약 작업 실행 시도 완료 (모든 단계에서 창 표시)"
-Start-Sleep 5
-Write-Host "[*] 종료 – 각 창에서 실행된 작업 확인"
+# 종료 대기
+Read-Host "Press <Enter> to close test script"
